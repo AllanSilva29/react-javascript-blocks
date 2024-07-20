@@ -1,0 +1,683 @@
+<html><head><base href="https://jscript.blocks.react.com/">
+    <title>JScript Blocks React - Interactive Visual JavaScript Programming</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      [data-theme="light"] {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f0f0f0;
+        --text-primary: #333333;
+        --text-secondary: #666666;
+        --accent-primary: #3b82f6;
+        --accent-secondary: #60a5fa;
+        --border-color: #d1d5db;
+        --button-bg: #e5e7eb;
+        --button-text: #4b5563;
+        --input-bg: #f3f4f6;
+      }
+    
+      [data-theme="dark"] {
+        --bg-primary: #1f2937;
+        --bg-secondary: #111827;
+        --text-primary: #f3f4f6;
+        --text-secondary: #9ca3af;
+        --accent-primary: #3b82f6;
+        --accent-secondary: #60a5fa;
+        --border-color: #374151;
+        --button-bg: #4b5563;
+        --button-text: #e5e7eb;
+        --input-bg: #374151;
+      }
+    
+      :root {
+        color-scheme: light dark;
+      }
+    
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+      }
+    
+      .block {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+      }
+    
+      .expression-slot {
+        background-color: var(--input-bg);
+      }
+    
+      .expression-input {
+        background-color: transparent;
+        color: var(--text-primary);
+      }
+    
+      #block-palette, #workspace, #code-output {
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+      }
+    
+      .move-block, .remove-block {
+        background-color: var(--button-bg);
+        color: var(--button-text);
+      }
+    </style>
+    </head>
+    <body class="min-h-screen">
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@17.0.2/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+    
+    <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+    
+    const Block = ({ type, onRemove, onSelect, isSelected, children, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <div 
+          className={`block ${type}-block ${isSelected ? 'ring-2 ring-blue-500' : ''} p-4 mb-2 rounded-lg shadow-md relative`}
+          onClick={onSelect}
+          draggable
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex">
+              <button className="move-block move-up w-6 h-6 flex items-center justify-center rounded-l-full hover:bg-blue-500 hover:text-white transition-colors" onClick={onMoveUp}>&uarr;</button>
+              <button className="move-block move-down w-6 h-6 flex items-center justify-center rounded-r-full hover:bg-blue-500 hover:text-white transition-colors" onClick={onMoveDown}>&darr;</button>
+            </div>
+            <button className="remove-block w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500 hover:text-white transition-colors" onClick={onRemove}>&times;</button>
+          </div>
+          <div className="block-content">
+            {children}
+          </div>
+        </div>
+      );
+    };
+    
+    const ExpressionSlot = ({ value, placeholder, onChange }) => {
+      return (
+        <div className="expression-slot inline-block min-w-[100px] mx-1 align-middle rounded">
+          <input
+            className="expression-input w-full px-2 py-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder || "expression"}
+          />
+        </div>
+      );
+    };
+    
+    const FunctionBlock = ({ onRemove, onSelect, isSelected, children, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      const updateFunction = (updates) => {
+        updateBlock({ ...block, ...updates });
+      };
+    
+      const addParam = () => {
+        const paramName = prompt('Enter parameter name:');
+        if (paramName) {
+          updateFunction({ params: [...(block.params || []), paramName] });
+        }
+      };
+    
+      const removeParam = (index) => {
+        updateFunction({ params: block.params.filter((_, i) => i !== index) });
+      };
+    
+      const toggleFunctionType = () => {
+        updateFunction({ isArrowFunction: !block.isArrowFunction });
+      };
+    
+      return (
+        <Block 
+          type="function" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          {block.isArrowFunction ? (
+            <span>({(block.params || []).join(', ')}) =&gt; </span>
+          ) : (
+            <span>
+              Function <ExpressionSlot placeholder={"functionName"} value={block.name || ''} onChange={(value) => updateFunction({ name: value })} />
+              ({(block.params || []).map((param, index) => (
+                <span key={index} className="param bg-purple-600 text-white px-2 py-1 rounded mr-1">
+                  {param}
+                  <span className="remove-param ml-1 cursor-pointer" onClick={() => removeParam(index)}>&times;</span>
+                </span>
+              ))})
+            </span>
+          )}
+          <button className="add-param bg-green-500 text-white px-2 py-1 rounded ml-2" onClick={addParam}>+</button>
+          <button className="toggle-function-type bg-blue-500 text-white px-2 py-1 rounded ml-2" onClick={toggleFunctionType}>
+            {block.isArrowFunction ? 'To Named' : 'To Arrow'}
+          </button>
+          <div className="block-container mt-2 p-2 border-2 border-dashed border-gray-300 rounded">{children}</div>
+        </Block>
+      );
+    };
+    
+    const IfBlock = ({ onRemove, onSelect, isSelected, children, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <Block 
+          type="control" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          If <ExpressionSlot 
+            value={block.condition || ''} 
+            onChange={(value) => updateBlock({ ...block, condition: value })} 
+          /> Then
+          <div className="block-container mt-2 p-2 border-2 border-dashed border-gray-300 rounded">{children}</div>
+        </Block>
+      );
+    };
+    
+    const ForBlock = ({ onRemove, onSelect, isSelected, children, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <Block 
+          type="control" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          For i = 
+          <ExpressionSlot 
+            value={block.start || ''} 
+            onChange={(value) => updateBlock({ ...block, start: value })} 
+          /> to 
+          <ExpressionSlot 
+            value={block.end || ''} 
+            onChange={(value) => updateBlock({ ...block, end: value })} 
+          />
+          <div className="block-container mt-2 p-2 border-2 border-dashed border-gray-300 rounded">{children}</div>
+        </Block>
+      );
+    };
+    
+    const WhileBlock = ({ onRemove, onSelect, isSelected, children, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <Block 
+          type="control" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          While <ExpressionSlot 
+            value={block.condition || ''} 
+            onChange={(value) => updateBlock({ ...block, condition: value })} 
+          />
+          <div className="block-container mt-2 p-2 border-2 border-dashed border-gray-300 rounded">{children}</div>
+        </Block>
+      );
+    };
+    
+    const VariableBlock = ({ onRemove, onSelect, isSelected, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <Block 
+          type="variable" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          Set <ExpressionSlot 
+            value={block.variable || ''} 
+            onChange={(value) => updateBlock({ ...block, variable: value })} 
+          /> to 
+          <ExpressionSlot 
+            value={block.value || ''} 
+            onChange={(value) => updateBlock({ ...block, value: value })} 
+          />
+        </Block>
+      );
+    };
+    
+    const ExpressionBlock = ({ onRemove, onSelect, isSelected, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <Block 
+          type="expression" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          Expression <ExpressionSlot 
+            value={block.expression || ''} 
+            onChange={(value) => updateBlock({ ...block, expression: value })} 
+          />
+        </Block>
+      );
+    };
+    
+    const CustomBlock = ({ onRemove, onSelect, isSelected, block, updateBlock, onDragStart, onDragOver, onDrop, onMoveUp, onMoveDown }) => {
+      return (
+        <Block 
+          type="custom" 
+          onRemove={onRemove} 
+          onSelect={onSelect} 
+          isSelected={isSelected}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        >
+          {block.name}: <ExpressionSlot 
+            value={block.content || ''} 
+            onChange={(value) => updateBlock({ ...block, content: value })} 
+          />
+        </Block>
+      );
+    };
+    
+    const BlockPalette = ({ onDragStart, onAddCustomBlock, customBlocks }) => {
+      const blockTypes = ['if', 'for', 'while', 'function', 'variable', 'expression', ...customBlocks];
+    
+      return (
+        <div id="block-palette" className="w-48 bg-gray-100 p-4 overflow-y-auto">
+          <h3 className="text-lg font-bold mb-4">Logic Blocks</h3>
+          {blockTypes.map(type => (
+            <div
+              key={typeof type === 'string' ? type : type.name}
+              className="block bg-blue-500 text-white p-2 mb-2 rounded cursor-move"
+              draggable
+              onDragStart={(e) => onDragStart(e, typeof type === 'string' ? type : 'custom', typeof type === 'string' ? null : type)}
+            >
+              {typeof type === 'string' ? type.charAt(0).toUpperCase() + type.slice(1) : type.name}
+            </div>
+          ))}
+          <button 
+            className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition-colors"
+            onClick={onAddCustomBlock}
+          >
+            Add Custom Block
+          </button>
+        </div>
+      );
+    };
+    
+    const Workspace = ({ blocks, onDrop, onRemoveBlock, selectedBlock, setSelectedBlock, updateBlock, moveBlock }) => {
+      const [dragOver, setDragOver] = useState(false);
+    
+      const handleDragOver = (e) => {
+        e.preventDefault();
+        setDragOver(true);
+      };
+    
+      const handleDragLeave = () => {
+        setDragOver(false);
+      };
+    
+      const handleDrop = (e, parentIndex) => {
+        e.preventDefault();
+        setDragOver(false);
+        const blockType = e.dataTransfer.getData('text/plain');
+        const sourceIndex = e.dataTransfer.getData('sourceIndex');
+        const customBlockData = e.dataTransfer.getData('customBlockData');
+        
+        if (sourceIndex) {
+          // Move existing block
+          const sourcePath = sourceIndex.split(',').map(Number);
+          const targetPath = parentIndex ? parentIndex.split(',').map(Number) : [];
+          moveBlock(sourcePath, targetPath);
+        } else {
+          // Add new block
+          onDrop(blockType, parentIndex, customBlockData ? JSON.parse(customBlockData) : null);
+        }
+      };
+    
+      const renderBlock = (block, index, parentIndex = '') => {
+        const currentIndex = parentIndex ? `${parentIndex},${index}` : `${index}`;
+        const props = {
+          key: currentIndex,
+          onRemove: () => onRemoveBlock(currentIndex),
+          onSelect: () => setSelectedBlock(currentIndex),
+          isSelected: selectedBlock === currentIndex,
+          block: block,
+          updateBlock: (newBlock) => updateBlock(currentIndex, newBlock),
+          onDragStart: (e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData('text/plain', block.type);
+            e.dataTransfer.setData('sourceIndex', currentIndex);
+            if (block.type === 'custom') {
+              e.dataTransfer.setData('customBlockData', JSON.stringify(block));
+            }
+          },
+          onDragOver: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          },
+          onDrop: (e) => {
+            e.stopPropagation();
+            handleDrop(e, currentIndex);
+          },
+          onMoveUp: () => moveBlock(currentIndex.split(',').map(Number), 'up'),
+          onMoveDown: () => moveBlock(currentIndex.split(',').map(Number), 'down'),
+        };
+    
+        const childBlocks = block.children ? renderBlocks(block.children, currentIndex) : null;
+    
+        switch (block.type) {
+          case 'if': return <IfBlock {...props}>{childBlocks}</IfBlock>;
+          case 'for': return <ForBlock {...props}>{childBlocks}</ForBlock>;
+          case 'while': return <WhileBlock {...props}>{childBlocks}</WhileBlock>;
+          case 'function': return <FunctionBlock {...props}>{childBlocks}</FunctionBlock>;
+          case 'variable': return <VariableBlock {...props} />;
+          case 'expression': return <ExpressionBlock {...props} />;
+          case 'custom': return <CustomBlock {...props} />;
+          default: return null;
+        }
+      };
+    
+      const renderBlocks = (blocks, parentIndex = '') => {
+        return blocks.map((block, index) => renderBlock(block, index, parentIndex));
+      };
+    
+      return (
+        <div
+          id="workspace"
+          className="flex-grow bg-white p-4 overflow-y-auto"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e)}
+        >
+          <h2 className="text-2xl font-bold mb-4">Workspace</h2>
+          <div id="main-container" className="block-container p-4 border-2 border-dashed border-gray-300 rounded min-h-[200px]">
+            {renderBlocks(blocks)}
+          </div>
+        </div>
+      );
+    };
+    
+    const CodeOutput = ({ code }) => (
+      <div id="code-output" className="w-72 bg-gray-800 text-green-400 p-4 font-mono overflow-y-auto">
+        <h3 className="text-lg font-bold mb-4 text-white">Generated JavaScript Code</h3>
+        <pre className="whitespace-pre-wrap">{code}</pre>
+      </div>
+    );
+    
+    const CustomBlockModal = ({ isOpen, onClose, onSave }) => {
+      const [blockName, setBlockName] = useState('');
+      const [blockExpression, setBlockExpression] = useState('');
+    
+      const handleSave = () => {
+        if (blockName && blockExpression) {
+          onSave({ name: blockName, content: blockExpression });
+          setBlockName('');
+          setBlockExpression('');
+          onClose();
+        }
+      };
+    
+      if (!isOpen) return null;
+    
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg">
+            <h2 className="text-xl font-bold mb-4">Add Custom Block</h2>
+            <input
+              type="text"
+              placeholder="Block Name"
+              value={blockName}
+              onChange={(e) => setBlockName(e.target.value)}
+              className="text-white w-full p-2 mb-4 border rounded"
+            />
+            <textarea
+              placeholder="Block Expression"
+              value={blockExpression}
+              onChange={(e) => setBlockExpression(e.target.value)}
+              className="text-white w-full p-2 mb-4 border rounded h-32"
+            />
+            <div className="flex justify-end">
+              <button onClick={onClose} className="mr-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded">Save</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+    
+    const App = () => {
+      const [blocks, setBlocks] = useState([]);
+      const [selectedBlock, setSelectedBlock] = useState(null);
+      const [code, setCode] = useState('// Your code will appear here as you build with blocks');
+      const [theme, setTheme] = useState('light');
+      const [customBlocks, setCustomBlocks] = useState([]);
+      const [isCustomBlockModalOpen, setIsCustomBlockModalOpen] = useState(false);
+    
+      const toggleTheme = () => {
+        setTheme(theme === 'light' ? 'dark' : 'light');
+      };
+    
+      const handleDragStart = (e, blockType, customBlockData) => {
+        e.dataTransfer.setData('text/plain', blockType);
+        if (customBlockData) {
+          e.dataTransfer.setData('customBlockData', JSON.stringify(customBlockData));
+        }
+      };
+    
+      const handleDrop = (blockType, parentIndex, customBlockData) => {
+        let newBlock;
+        if (blockType === 'custom' && customBlockData) {
+          newBlock = { ...customBlockData, type: 'custom', children: [] };
+        } else {
+          newBlock = { type: blockType, children: [] };
+        }
+        
+        if (parentIndex) {
+          const path = parentIndex.split(',').map(Number);
+          const newBlocks = [...blocks];
+          let currentBlock = newBlocks;
+          
+          for (let i = 0; i < path.length - 1; i++) {
+            currentBlock = currentBlock[path[i]].children;
+          }
+          
+          currentBlock[path[path.length - 1]].children.push(newBlock);
+          setBlocks(newBlocks);
+        } else {
+          setBlocks([...blocks, newBlock]);
+        }
+      };
+    
+      const handleRemoveBlock = (index) => {
+        const path = index.split(',').map(Number);
+        const newBlocks = [...blocks];
+        let currentBlock = newBlocks;
+        
+        for (let i = 0; i < path.length - 1; i++) {
+          currentBlock = currentBlock[path[i]].children;
+        }
+        
+        currentBlock.splice(path[path.length - 1], 1);
+        setBlocks(newBlocks);
+        
+        if (selectedBlock === index) {
+          setSelectedBlock(null);
+        }
+      };
+    
+      const updateBlock = (index, newBlock) => {
+        const path = index.split(',').map(Number);
+        const newBlocks = [...blocks];
+        let currentBlock = newBlocks;
+        
+        for (let i = 0; i < path.length - 1; i++) {
+          currentBlock = currentBlock[path[i]].children;
+        }
+        
+        currentBlock[path[path.length - 1]] = { ...currentBlock[path[path.length - 1]], ...newBlock };
+        setBlocks(newBlocks);
+      };
+    
+      const moveBlock = (sourcePath, targetPath) => {
+        const newBlocks = [...blocks];
+        let sourceParent = newBlocks;
+        let targetParent = newBlocks;
+        
+        for (let i = 0; i < sourcePath.length - 1; i++) {
+          sourceParent = sourceParent[sourcePath[i]].children;
+        }
+        
+        if (typeof targetPath === 'string') {
+          // Move up or down
+          const sourceIndex = sourcePath[sourcePath.length - 1];
+          const newIndex = targetPath === 'up' ? sourceIndex - 1 : sourceIndex + 1;
+          
+          if (newIndex >= 0 && newIndex < sourceParent.length) {
+            const [movedBlock] = sourceParent.splice(sourceIndex, 1);
+            sourceParent.splice(newIndex, 0, movedBlock);
+          }
+        } else {
+          // Move to a new parent
+          for (let i = 0; i < targetPath.length - 1; i++) {
+            targetParent = targetParent[targetPath[i]].children;
+          }
+          
+          const [movedBlock] = sourceParent.splice(sourcePath[sourcePath.length - 1], 1);
+          targetParent.splice(targetPath[targetPath.length - 1], 0, movedBlock);
+        }
+        
+        setBlocks(newBlocks);
+      };
+    
+      const addCustomBlock = (newBlock) => {
+        setCustomBlocks([...customBlocks, newBlock]);
+      };
+    
+      const generateCode = useCallback((blocks, indent = '') => {
+        return blocks.map(block => {
+          switch (block.type) {
+            case 'if':
+              return `${indent}if (${block.condition || 'condition'}) {\n${generateCode(block.children, indent + '  ')}\n${indent}}`;
+            case 'for':
+              return `${indent}for (let i = ${block.start || '0'}; i < ${block.end || '10'}; i++) {\n${generateCode(block.children, indent + '  ')}\n${indent}}`;
+            case 'while':
+              return `${indent}while (${block.condition || 'condition'}) {\n${generateCode(block.children, indent + '  ')}\n${indent}}`;
+            case 'function':
+              if (block.isArrowFunction) {
+                return `${indent}const ${block.name || 'myFunction'} = (${(block.params || []).join(', ')}) => {\n${generateCode(block.children, indent + '  ')}\n${indent}}`;
+              } else {
+                return `${indent}function ${block.name || 'myFunction'}(${(block.params || []).join(', ')}) {\n${generateCode(block.children, indent + '  ')}\n${indent}}`;
+              }
+            case 'variable':
+              return `${indent}let ${block.variable || 'myVar'} = ${block.value || 'value'};`;
+            case 'expression':
+              return `${indent}${block.expression || '// expression'};`;
+            case 'custom':
+              return `${indent}${block.content || '// custom block'};`;
+            default:
+              return '';
+          }
+        }).join('\n');
+      }, []);
+    
+      useEffect(() => {
+        const newCode = generateCode(blocks);
+        setCode(newCode);
+      }, [blocks, generateCode]);
+    
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'Delete' && selectedBlock !== null) {
+            handleRemoveBlock(selectedBlock);
+          }
+        };
+    
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+          document.removeEventListener('keydown', handleKeyDown);
+        };
+      }, [selectedBlock]);
+    
+      useEffect(() => {
+        document.body.setAttribute('data-theme', theme);
+      }, [theme]);
+    
+      return (
+        <div className="min-h-screen flex flex-col">
+          <header className="bg-blue-600 text-white p-4">
+            <div className="container mx-auto flex justify-between items-center">
+              <h1 className="text-3xl font-bold">JScript Blocks React</h1>
+              <p className="text-lg">Interactive Visual JavaScript Programming</p>
+              <button 
+                onClick={toggleTheme}
+                className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition-colors"
+              >
+                {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+              </button>
+            </div>
+          </header>
+          <main className="flex flex-1 overflow-hidden">
+            <BlockPalette 
+              onDragStart={handleDragStart} 
+              onAddCustomBlock={() => setIsCustomBlockModalOpen(true)}
+              customBlocks={customBlocks}
+            />
+            <Workspace
+              blocks={blocks}
+              onDrop={handleDrop}
+              onRemoveBlock={handleRemoveBlock}
+              selectedBlock={selectedBlock}
+              setSelectedBlock={setSelectedBlock}
+              updateBlock={updateBlock}
+              moveBlock={moveBlock}
+            />
+            <CodeOutput code={code} />
+          </main>
+          <CustomBlockModal 
+            isOpen={isCustomBlockModalOpen}
+            onClose={() => setIsCustomBlockModalOpen(false)}
+            onSave={addCustomBlock}
+          />
+        </div>
+      );
+    };
+    
+    ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+    
+    <footer class="bg-gray-200 p-4 mt-8">
+      <div class="container mx-auto">
+        <p class="text-center text-gray-600">Explore more advanced React-based coding tools:</p>
+        <ul class="flex justify-center mt-2 space-x-4">
+          <li><a href="https://react.advanced.blocks.studio" class="text-blue-600 hover:underline">React Advanced Blocks Studio</a></li>
+          <li><a href="https://react.functional.programming.visualizer.dev" class="text-blue-600 hover:underline">React Functional Programming Visualizer</a></li>
+          <li><a href="https://react.code.generator.ai" class="text-blue-600 hover:underline">React AI Code Generator</a></li>
+        </ul>
+      </div>
+    </footer>
+    </body></html>
