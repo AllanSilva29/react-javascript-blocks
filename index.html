@@ -379,6 +379,30 @@ const App = () => {
   const [code, setCode] = useState('// Your code will appear here as you build with blocks');
   const [customBlocks, setCustomBlocks] = useState([]);
   const [isCustomBlockModalOpen, setIsCustomBlockModalOpen] = useState(false);
+  
+  // Function to save logic blocks to localStorage
+  const saveLogicBlocks = (customLogicBlocks) => {
+    try {
+      localStorage.setItem('customLogicBlocks', JSON.stringify(customLogicBlocks));
+      alert('Logic blocks saved successfully!');
+    } catch (error) {
+      console.error('Error saving logic blocks:', error);
+      alert('Failed to save logic blocks. Please try again.');
+    }
+  };
+
+  // Function to load logic blocks from localStorage
+  const loadLogicBlocks = () => {
+    try {
+      const savedBlocks = localStorage.getItem('customLogicBlocks');
+      if (savedBlocks) {
+        setCustomBlocks(JSON.parse(savedBlocks));
+      }
+    } catch (error) {
+      console.error('Error loading logic blocks:', error);
+      alert('Failed to load logic blocks. Please try again.');
+    }
+  };
 
   const handleDragStart = (e, blockType, customBlockData) => {
     e.dataTransfer.setData('text/plain', blockType);
@@ -444,6 +468,7 @@ const App = () => {
 
   const addCustomBlock = (newBlock) => {
     setCustomBlocks([...customBlocks, newBlock]);
+    saveLogicBlocks([...customBlocks, newBlock]);
   };
 
   const removeCustomBlock = (index) => {
@@ -473,6 +498,10 @@ const App = () => {
       }
       return '';
     }).join('\n');
+  }, []);
+  
+   useEffect(() => {
+    loadLogicBlocks();
   }, []);
 
   useEffect(() => {
