@@ -481,8 +481,8 @@ const App = () => {
     let code = '';
 
     // Replace [blank] with actual expressions if available
+    if(!block.content) return;
     let content = block.content;
-    if(!content) return;
     (block.expressions || []).forEach((expr, index) => {
           if (typeof expr === 'string') {
             content = content.replace('[blank]', expr);
@@ -538,6 +538,19 @@ const App = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedBlock]);
+  
+  const handleSaveAsCustomBlock = () => {
+    const newBlock = {
+      type: 'custom',
+      name: `Custom Block ${customBlocks.length + 1}`,
+      content: '[MAIN]',
+      children: blocks,
+      expressions: []
+    };
+
+    setCustomBlocks([...customBlocks, newBlock]);
+    setBlocks([]); // Clear the workspace after saving as custom block
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-white">
@@ -554,8 +567,25 @@ const App = () => {
           customBlocks={customBlocks}
           onRemoveCustomBlock={removeCustomBlock}
         />
-        <Workspace blocks={blocks} onDrop={handleDrop} onRemoveBlock={handleRemoveBlock} selectedBlock={selectedBlock}
-          setSelectedBlock={setSelectedBlock} updateBlock={updateBlock} moveBlock={moveBlock} />
+        <div className="flex flex-col flex-1">
+        <Workspace 
+          blocks={blocks} 
+          onDrop={handleDrop} 
+          onRemoveBlock={handleRemoveBlock} 
+          selectedBlock={selectedBlock}
+          setSelectedBlock={setSelectedBlock} 
+          updateBlock={updateBlock} 
+          moveBlock={moveBlock} 
+        />
+        <div className="flex justify-center p-4">
+          <button 
+            className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors"
+            onClick={handleSaveAsCustomBlock}
+          >
+            Save as Custom Block
+          </button>
+        </div>
+      </div>
         <CodeOutput code={code} />
       </main>
       <CustomBlockModal isOpen={isCustomBlockModalOpen} onClose={() => setIsCustomBlockModalOpen(false)} onSave={addCustomBlock} />
