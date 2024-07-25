@@ -540,9 +540,10 @@ const App = () => {
   }, [selectedBlock]);
   
   const handleSaveAsCustomBlock = () => {
+    const customBlockName = prompt("Custom Block Name")
     const newBlock = {
       type: 'custom',
-      name: `Custom Block ${customBlocks.length + 1}`,
+      name: customBlockName,
       content: '[MAIN]',
       children: blocks,
       expressions: []
