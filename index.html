@@ -482,6 +482,7 @@ const App = () => {
 
     // Replace [blank] with actual expressions if available
     let content = block.content;
+    if(!content) return;
     (block.expressions || []).forEach((expr, index) => {
           if (typeof expr === 'string') {
             content = content.replace('[blank]', expr);
