@@ -160,7 +160,7 @@ const CustomBlock = ({ onRemove, onSelect, isSelected, block, updateBlock, onDra
       onMoveUp={onMoveUp} 
       onMoveDown={onMoveDown}
     >
-      {block.name}: {renderContent()}
+      {renderContent()}
     </Block>
   );
 };
@@ -476,38 +476,59 @@ const App = () => {
     newCustomBlocks.splice(index, 1);
     setCustomBlocks(newCustomBlocks);
   };
+  
+  const blockToCode = (block, indent = '') => {
+    let code = '';
 
-  const generateCode = useCallback((blocks, indent = '') => {
-    return blocks.map(block => {
-      if (block.type === 'custom') {
-        let code = block.content;
-        (block.expressions || []).forEach((expr, index) => {
+    // Replace [blank] with actual expressions if available
+    let content = block.content;
+    (block.expressions || []).forEach((expr, index) => {
           if (typeof expr === 'string') {
-            code = code.replace('[blank]', expr);
+            content = content.replace('[blank]', expr);
           } else if (expr && expr.type === 'custom') {
-            code = code.replace('[blank]', generateCode([expr], indent + '  '));
+            content = content.replace('[blank]', blockToCode([expr], indent + '  '));
           }
         });
-        if (block.children && block.children.length > 0) {
-          const childrenCode = generateCode(block.children, indent + '  ');
-          code = code.replace('[MAIN]', `${childrenCode}${indent}`);
-        } else {
-          code = code.replace('[MAIN]', '');
-        }
-        return `${indent}${code}`;
+
+    // Process children (nested blocks)
+    if (block.children && block.children.length > 0) {
+      let childCode = '';
+      for (const child of block.children) {
+        childCode += blockToCode(child, indent + '  ');
       }
-      return '';
-    }).join('\n');
-  }, []);
+      // Replace [MAIN] with the processed child code
+      content = content.replace('[MAIN]', childCode.trimEnd() + indent);
+    } else {
+      // If no children, remove the [MAIN] placeholder and any empty lines
+      content = content.replace('[MAIN]', '').split('\n').filter(line => line.trim() !== '').join('\n');
+    }
+
+    // Split the content into lines and add indentation
+    const lines = content.split('\n');
+    lines.forEach((line, index) => {
+      if (index === lines.length - 1 && line.trim() === '') return; // Skip last empty line
+      code += indent + line + '\n';
+    });
+
+    return code;
+  };
+  
+  const convertBlocksToCode = useCallback((blocks) => {
+    let fullCode = '';
+    for (const block of blocks) {
+      fullCode += blockToCode(block);
+    }
+    return fullCode;
+  }, [])
   
    useEffect(() => {
     loadLogicBlocks();
   }, []);
 
   useEffect(() => {
-    const newCode = generateCode(blocks);
+    const newCode = convertBlocksToCode(blocks);
     setCode(newCode);
-  }, [blocks, generateCode]);
+  }, [blocks, convertBlocksToCode]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
